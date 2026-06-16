@@ -1,7 +1,7 @@
 name: MEADOW_DEAD_POST_RESURRECTION
 on:
   schedule:
-    - cron: '0 4 * * 0' # 4am every Sunday
+    - cron: '0 10 * * *' # 10am daily
   workflow_dispatch:
 
 jobs:
