@@ -1,0 +1,29 @@
+# MEADOW: Edit this to control where/how we post
+# Set ban_links: true if group deletes link posts
+# Set post_template to match group rules
+
+groups:
+    - name: "Springfield OH Musicians"
+    id: "123456789" # Get from group URL
+    ban_links: false
+    post_template: "[OC] New JhammerZ: {title}\nReal drums by Mike. {link}"
+    tags: ["original", "ohio"]
+    active: true
+
+    - name: "Rock Guitarists United"
+    id: "987654321"
+    ban_links: true # This group hates links
+    post_template: "New track '{title}' is up. Link in comments. [OC]"
+    comment_after_min: 2 # Post link as first comment after 2min
+    active: true
+
+    - name: "Dads Who Shred"
+    id: "555555555"
+    ban_links: false
+    post_template: "Dad riff of the week: {title} 🤘\n{link}"
+    active: false # Turn off anytime
+
+meadow_settings:
+  global_sleep_between_posts: 180 # Read from MEADOW.md if exists
+  max_posts_per_day: 50
+  respect_ban_list: true
