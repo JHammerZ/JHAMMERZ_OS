@@ -12,6 +12,9 @@ on:
     paths:
       - 'schedule-now.txt' # Commit this file to trigger
 
+permissions:
+  contents: write
+
 jobs:
   schedule:
     runs-on: ubuntu-latest
