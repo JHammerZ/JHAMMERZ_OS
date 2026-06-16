@@ -1,0 +1,30 @@
+name: MEADOW_LINK_HEALTH
+on:
+  schedule:
+        - cron: '0 3 * * *' # 3am nightly
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+            - uses: actions/checkout@v4
+
+            - name: Kill Switch Check
+        run: |
+          grep 'KILL_SWITCH: true' MEADOW.md && exit 1 || true
+          grep 'link_health_check_enabled: true' MEADOW.md || exit 0
+
+            - name: Run Health Check
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+        run: python scripts/link_health.py
+
+            - name: Commit Results
+        run: |
+          git config user.name "JhammerZ_OS"
+          git config user.email "bot@jhammerz.com"
+          git add BROKEN_LINKS.md
+          git diff --quiet || git commit -m "Meadow: link health report [skip ci]"
+          git push
