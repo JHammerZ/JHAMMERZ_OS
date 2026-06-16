@@ -4,6 +4,9 @@ on:
     - cron: '*/15 * * * *' # Reads MEADOW.md for actual interval
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   triage:
     runs-on: ubuntu-latest
@@ -14,7 +17,7 @@ jobs:
         id: config
         run: |
           KILL=$(grep 'KILL_SWITCH: true' MEADOW.md || true)
-          if [! -z "$KILL" ]; then echo "Kill switch active. Exiting."; exit 1; fi
+          if [ ! -z "$KILL" ]; then echo "Kill switch active. Exiting."; exit 1; fi
           ENABLED=$(grep 'comment_triage_enabled: true' MEADOW.md || true)
           if [ -z "$ENABLED" ]; then echo "Triage disabled in Meadow. Exiting."; exit 0; fi
 
