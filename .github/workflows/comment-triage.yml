@@ -1,0 +1,41 @@
+name: MEADOW_COMMENT_TRIAGE
+on:
+  schedule:
+    - cron: '*/15 * * * *' # Reads MEADOW.md for actual interval
+  workflow_dispatch:
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read Meadow Config
+        id: config
+        run: |
+          KILL=$(grep 'KILL_SWITCH: true' MEADOW.md || true)
+          if [! -z "$KILL" ]; then echo "Kill switch active. Exiting."; exit 1; fi
+          ENABLED=$(grep 'comment_triage_enabled: true' MEADOW.md || true)
+          if [ -z "$ENABLED" ]; then echo "Triage disabled in Meadow. Exiting."; exit 0; fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: pip install requests python-frontmatter
+
+      - name: Run Triage
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+        run: python scripts/triage_comments.py
+
+      - name: Commit Fan Data
+        run: |
+          git config user.name "JhammerZ_OS"
+          git config user.email "bot@jhammerz.com"
+          git add fans.json REPLIES_NEEDED.md
+          git diff --quiet || git commit -m "Meadow: fan data updated [skip ci]"
+          git push
