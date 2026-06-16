@@ -1,0 +1,38 @@
+name: MEADOW_SMART_SCHEDULER
+on:
+  workflow_dispatch:
+    inputs:
+      track_title:
+        description: 'Track title to promote'
+        required: true
+      track_link:
+        description: 'Link to track'
+        required: true
+  push:
+    paths:
+            - 'schedule-now.txt' # Commit this file to trigger
+
+jobs:
+  schedule:
+    runs-on: ubuntu-latest
+    steps:
+            - uses: actions/checkout@v4
+
+            - name: Kill Switch Check
+        run: |
+          grep 'KILL_SWITCH: true' MEADOW.md && exit 1 || true
+
+            - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+            - name: Install deps
+        run: pip install requests pyyaml python-frontmatter
+
+            - name: Run Smart Scheduler
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          TRACK_TITLE: ${{ inputs.track_title }}
+          TRACK_LINK: ${{ inputs.track_link }}
+        run: python scripts/smart_scheduler.py
