@@ -1,0 +1,6 @@
+{
+  "name": "Aurelius Sovereign Orchestrator",
+  "description": "Global Tier 0 Absolute Authority Dashboard. Root Kernel Max 10 Orchestration complex with 12-node cluster synchronization, upgraded to a Tribrid Orchestrator System with Aurelius Spark, Manus Operator, and Claude Mythos Cores.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
