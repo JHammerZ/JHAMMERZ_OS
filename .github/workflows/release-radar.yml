@@ -1,0 +1,30 @@
+name: MEADOW_RELEASE_RADAR
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Kill Switch
+        run: |
+          grep 'KILL_SWITCH: true' MEADOW.md && exit 1 || true
+          grep 'release_radar_enabled: true' MEADOW.md || exit 0
+
+      - name: Post to FB Page
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          NOTES=$(cat release-notes.txt 2>/dev/null || echo "New music from JhammerZ. Real humans played it.")
+          TEMPLATE=$(grep 'group_post_template:' MEADOW.md | cut -d'"' -f2)
+          MSG=$(echo "$TEMPLATE" | sed "s/{title}/$TAG/" | sed "s/{link}/https:\/\/jhammerz.github.io/")
+
+          curl -X POST "https://graph.facebook.com/v19.0/${FB_PAGE_ID}/feed" \
+            -d "message=$MSG" \
+            -d "access_token=${FB_PAGE_TOKEN}"
