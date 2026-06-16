@@ -9,7 +9,7 @@ GRAPH = "https://graph.facebook.com/v19.0"
 meadow = frontmatter.load('MEADOW.md')
 res = meadow.get('resurrection', {})
 
-min_age_hours = res.get('min_age_hours', 24) # 24h+ = qualifies
+min_age_hours = res.get('min_age_hours', 24)
 max_resurrect = res.get('max_per_run', 8)
 max_likes = res.get('max_likes_to_resurrect', 5)
 max_comments = res.get('max_comments_to_resurrect', 2)
@@ -20,14 +20,13 @@ exclude_vip = res.get('exclude_vip_commented', True)
 fans = {}
 if Path('fans.json').exists():
     fans = json.loads(Path('fans.json').read_text())
-vip_ids = [uid for uid, data in fans.items() if data.get('comments', 0) >= 5] # 5+ comments = VIP
+vip_ids = [uid for uid, data in fans.items() if data.get('comments', 0) >= 5]
 
 # Load cooldown cache
 cooldown_file = Path('.resurrection_cooldown.json')
 cooldown = json.loads(cooldown_file.read_text()) if cooldown_file.exists() else {}
 
 now = datetime.datetime.now(datetime.timezone.utc)
-# Scan last 90 days to catch old flops, but only resurrect if 24h+ old
 since = (now - datetime.timedelta(days=90)).strftime('%Y-%m-%d')
 
 posts_url = f"{GRAPH}/{PAGE_ID}/posts?fields=id,message,created_time,likes.summary(true),comments.summary(true),comments{{from}}&since={since}&limit=100&access_token={TOKEN}"
@@ -39,10 +38,8 @@ for post in posts:
     created = parser.parse(post['created_time'])
     age_hours = (now - created).total_seconds() / 3600
 
-    # Must be older than 24h
     if age_hours < min_age_hours: continue
 
-    # Check cooldown: skip if we bumped this in last X days
     if pid in cooldown:
         last_bump = parser.parse(cooldown[pid])
         if (now - last_bump).days < cooldown_days: continue
@@ -51,11 +48,9 @@ for post in posts:
     comments = post.get('comments', {}).get('summary', {}).get('total_count', 0)
     msg = post.get('message', '')
 
-    # Flop criteria: low engagement + has your link
     if likes > max_likes or comments > max_comments: continue
     if 'jhammerz.github.io' not in msg: continue
 
-    # Skip if VIP already commented - they saw it
     if exclude_vip and post.get('comments', {}).get('data'):
         commenter_ids = [c['from']['id'] for c in post['comments']['data']]
         if any(uid in vip_ids for uid in commenter_ids): continue
@@ -69,12 +64,11 @@ for post in posts:
         'created': created.strftime('%Y-%m-%d')
     })
 
-# Sort: oldest flops first, then worst performers
 candidates.sort(key=lambda x: (-x['age_days'], x['likes'], x['comments']))
 to_resurrect = candidates[:max_resurrect]
 
 log = [f"# RESURRECTION_LOG\n> 24h+ Flop Run: {now.strftime('%Y-%m-%d %H:%M')} UTC\n"]
-log.append(f"**Scanning for any post 24h+ old with ≤{max_likes}L ≤{max_comments}C**\n")
+log.append(f"**Scanning for any post {min_age_hours}h+ old with ≤{max_likes}L ≤{max_comments}C**\n")
 
 res_messages = [
     "Buried treasure: {age_days} days old, {likes} likes. Deserved better. Bump.",
@@ -89,10 +83,6 @@ res_messages = [
 for post in to_resurrect:
     pid = post['id']
 
-    # Link health check + fix
-    #... keeping same logic from before...
-
-    # Resurrection comment
     msg = random.choice(res_messages).format(
         age_days=post['age_days'],
         created=post['created'],
@@ -113,7 +103,7 @@ for post in to_resurrect:
         log.append(f"❌ Failed {pid}: {cr.text}")
 
     import time
-    time.sleep(90) # 90sec between bumps = very human
+    time.sleep(90)
 
 cooldown_file.write_text(json.dumps(cooldown))
 Path('RESURRECTION_LOG.md').write_text("\n".join(log))
