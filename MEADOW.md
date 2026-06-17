@@ -15,3 +15,9 @@ git push -u origin main
     max_comments_to_resurrect: 2 # And 2 comments or less
     cooldown_days: 7 # Don't re-bump same post for 7 days
     exclude_vip_commented: true # Skip if Tami or other VIPs already commented
+
+## Aurelius Orchestration
+- aurelius_orchestrator: active
+- a2a_gateway: connected
+- sync_frequency: 100/100 H-Fid
+- protocol: A2A-Standard-2026
