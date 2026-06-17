@@ -1,76 +1,35 @@
-import os, requests, datetime, time
-from dateutil import parser
+name: MEADOW_DEAD_POST_RESURRECTION
+on:
+  schedule:
+    - cron: '0 10 * * *' # 10am daily
+  workflow_dispatch:
 
-PAGE_ID = os.environ['FB_PAGE_ID']
-TOKEN = os.environ['FB_PAGE_TOKEN']
-GRAPH = "https://graph.facebook.com/v19.0"
-
-# 1. GET POSTS TO CHECK FOR RESURRECTION
-def get_flop_posts(hours_old=24, max_engagement=5):
-    """Get posts older than X hours with low engagement"""
-    since = int(time.time()) - (hours_old * 3600)
-    url = f"{GRAPH}/{PAGE_ID}/posts"
-    params = {
-        'fields': 'id,message,created_time,insights.metric(post_impressions,post_engaged_users)',
-        'since': since,
-        'limit': 50,
-        'access_token': TOKEN
-    }
-    posts = requests.get(url, params=params).json().get('data', [])
-
-    flops = []
-    for post in posts:
-        insights = post.get('insights', {}).get('data', [])
-        engaged = 0
-        for metric in insights:
-            if metric['name'] == 'post_engaged_users':
-                engaged = metric['values'][0]['value']
-
-        if engaged <= max_engagement:
-            flops.append({
-                'id': post['id'],
-                'message': post.get('message', '')[:100],
-                'created': post['created_time'],
-                'engaged': engaged
-            })
-    return flops
-
-# 2. POST A RESURRECTION COMMENT
-def resurrect_post(post_id, comment_text="Dropping this back in the feed 🔥"):
-    """Comment on dead post to bump it in algorithm"""
-    url = f"{GRAPH}/{post_id}/comments"
-    params = {
-        'message': comment_text,
-        'access_token': TOKEN
-    }
-    res = requests.post(url, params=params)
-    return res.json()
-
-# 3. GET EXISTING COMMENTS TO AVOID DUPLICATES
-def get_post_comments(post_id):
-    """Check if we already resurrected this post"""
-    url = f"{GRAPH}/{post_id}/comments"
-    params = {
-        'fields': 'from,message,created_time',
-        'access_token': TOKEN
-    }
-    return requests.get(url, params=params).json().get('data', [])
-
-# 4. UPDATE POST TO TRIGGER FEED REFRESH
-def bump_post(post_id):
-    """Alternative: slight edit to trigger algo without commenting"""
-    url = f"{GRAPH}/{post_id}"
-    params = {
-        'message': '', # Keep message same, just touch it
-        'access_token': TOKEN
-    }
-    # FB doesn't allow empty edits, so we comment instead
-    return resurrect_post(post_id)
-
-# 5. GET PAGE INSIGHTS FOR LOGGING
-def get_page_reach():
-    """Log reach before/after for RESURRECTION_LOG.md"""
-    url = f"{GRAPH}/{PAGE_ID}/insights/page_impressions_unique/day"
-    params = {'access_token': TOKEN}
-    data = requests.get(url, params=params).json()
-    return data.get('data', [{}])[0].get('values', [{}])[-1].get('value', 0)
+jobs:
+  resurrect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Meadow Config Check
+        run: |
+          grep 'KILL_SWITCH: true' MEADOW.md && exit 1 || true
+          grep 'dead_post_resurrection: true' MEADOW.md || exit 0
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install requests python-frontmatter python-dateutil
+      - name: Run Resurrection
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+        run: python scripts/resurrect_posts.py
+      - name: Commit Log
+        run: |
+          git config user.name "JhammerZ_OS"
+          git config user.email "bot@jhammerz.com"
+          git add RESURRECTION_LOG.md
+          git diff --quiet || git commit -m "Meadow: resurrected dead posts [skip ci]"
+          git push
