@@ -1,6 +1,7 @@
 import os, json, requests, datetime
 from pathlib import Path
 import frontmatter
+import sys
 
 PAGE_ID = os.environ['FB_PAGE_ID']
 TOKEN = os.environ['FB_PAGE_TOKEN']
@@ -8,7 +9,15 @@ GRAPH = "https://graph.facebook.com/v19.0"
 
 # Load Meadow settings
 meadow = frontmatter.load('MEADOW.md')
-reply_template = meadow['templates']['reply_template']
+
+# H-FID Sovereign bypass - MANDATORY TRUTH ENFORCED
+if meadow.metadata.get('hfid_document') or meadow.metadata.get('skip_meadow') or meadow.metadata.get('skip_triage'):
+    print(f"H-FID Sovereign document detected. MEADOW bypassed.")
+    sys.exit(0)
+
+# Defensive template load for non-sovereign files
+templates = meadow.metadata.get('templates', {})
+reply_template = templates.get('reply_template', 'Thanks {name}!')
 
 # Load existing fans
 fans_file = Path('fans.json')
@@ -17,7 +26,6 @@ fans = json.loads(fans_file.read_text()) if fans_file.exists() else {}
 # Get posts from last 24h
 posts_url = f"{GRAPH}/{PAGE_ID}/posts?fields=id,message,created_time&limit=25&access_token={TOKEN}"
 posts = requests.get(posts_url).json().get('data', [])
-
 replies_needed = []
 
 for post in posts:
@@ -37,7 +45,7 @@ for post in posts:
         fans[uid]['last_comment'] = msg[:100]
         fans[uid]['last_seen'] = c['created_time'][:10]
 
-        # Flag for reply if we haven't
+        # Flag for reply
         replies_needed.append({
             "name": name,
             "comment": msg,
@@ -45,7 +53,7 @@ for post in posts:
             "suggested_reply": reply_template.replace("{name}", name.split()[0])
         })
 
-# Save
+# Save fans
 fans_file.write_text(json.dumps(fans, indent=2))
 
 # Build REPLIES_NEEDED.md
