@@ -1,38 +1,38 @@
 name: MEADOW_DEAD_POST_RESURRECTION
 on:
   schedule:
-    - cron: '0 10 * * *' # 10am daily
+    - cron: '0 10 * * *'  # 10am daily
   workflow_dispatch:
 
 jobs:
   resurrect:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
       - name: Meadow Config Check
         run: |
           grep 'KILL_SWITCH: true' MEADOW.md && exit 1 || true
           grep 'dead_post_resurrection: true' MEADOW.md || exit 0
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
       - name: Install deps
         run: pip install requests python-frontmatter python-dateutil
-
       - name: Run Resurrection
         env:
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
         run: python scripts/resurrect_posts.py
-
       - name: Commit Log
         run: |
           git config user.name "JhammerZ_OS"
           git config user.email "bot@jhammerz.com"
           git add RESURRECTION_LOG.md
-          git diff --quiet || git commit -m "Meadow: resurrected dead posts [skip ci]"
+          git diff --quiet && echo "No changes to commit" || git commit -m "Meadow: resurrected dead posts [skip ci]"
           git push
